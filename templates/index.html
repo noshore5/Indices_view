@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stock Index Viewer</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #eee;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        select, button {
+            font-size: 1rem;
+            padding: 0.4rem;
+            margin: 0.5rem;
+            background-color: #222;
+            color: #eee;
+            border: 1px solid #444;
+        }
+        img {
+            margin-top: 20px;
+            max-width: 90%;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Major Stock Indices</h1>
+    <form method="post">
+        <label for="period">Select timeframe:</label>
+        <select name="period" id="period">
+            {% for label, value in timeframes.items() %}
+                <option value="{{ value }}" {% if selected == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Update</button>
+    </form>
+
+    <img src="{{ plot_url }}" alt="Stock Index Plot">
+</body>
+</html>
