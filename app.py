@@ -36,6 +36,12 @@ def index():
     # Download and normalize data to make them start at 100
     data = yf.download(list(indices.values()), period=selected_period, interval=interval)["Close"].ffill()
 
+    if data.empty:
+        print(f"No data returned for period {selected_period} and interval {interval}")
+        # Return a simple error page or render with a message
+        return render_template("index.html", timeframes=timeframes, selected=selected_period,
+                            plot_url=None, error_msg="No data available for this timeframe.")
+
     # Normalize each series to start at 100
     normalized = data / data.iloc[0] * 100
     # Plotting normalized values
@@ -52,7 +58,7 @@ def index():
     plt.tight_layout()
 
     # Save to static
-    plot_path = os.path.join("static", "plot2.png")
+    plot_path = os.path.join("static", "plot.png")
     plt.savefig(plot_path)
     plt.close()
 
