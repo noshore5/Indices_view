@@ -100,7 +100,7 @@
         function startPolling(range, chartId) {
             if (intervals[range]) return;
             updateChart(range, chartId);
-            intervals[range] = setInterval(() => updateChart(range, chartId), 1000);
+            intervals[range] = setInterval(() => updateChart(range, chartId), 5000); // <-- updates every 5 seconds
         }
 
         function stopPolling(range) {
