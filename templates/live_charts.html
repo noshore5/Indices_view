@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CryptoLive - Live Charts</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { background: #181818; color: #cccccc; font-family: 'Segoe UI', Arial, sans-serif; }
+        .container { max-width: 900px; margin: 40px auto; }
+        .card { background: #232323; color: #cccccc; border: 1px solid #444; }
+        .nav-tabs .nav-link.active { background: #181818; color: #fff; border-color: #444 #444 #232323; }
+        .nav-tabs .nav-link { color: #cccccc; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card shadow p-4">
+            <h2 class="mb-4 text-center">Live Price Data</h2>
+            <ul class="nav nav-tabs mb-3" id="chartTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-60s" data-bs-toggle="tab" data-bs-target="#tab-content-60s" type="button" role="tab" aria-controls="tab-content-60s" aria-selected="true">Last 60 Seconds</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-30m" data-bs-toggle="tab" data-bs-target="#tab-content-30m" type="button" role="tab" aria-controls="tab-content-30m" aria-selected="false">Last 30 Minutes</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-3h" data-bs-toggle="tab" data-bs-target="#tab-content-3h" type="button" role="tab" aria-controls="tab-content-3h" aria-selected="false">Last 3 Hours</button>
+                </li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="tab-content-60s" role="tabpanel" aria-labelledby="tab-60s">
+                    <div id="live-chart-60s" style="height: 500px;"></div>
+                </div>
+                <div class="tab-pane fade" id="tab-content-30m" role="tabpanel" aria-labelledby="tab-30m">
+                    <div id="live-chart-30m" style="height: 500px;"></div>
+                </div>
+                <div class="tab-pane fade" id="tab-content-3h" role="tabpanel" aria-labelledby="tab-3h">
+                    <div id="live-chart-3h" style="height: 500px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Only poll for the active tab
+        let activeTab = "60s";
+        let intervals = {};
+
+        async function fetchData(range) {
+            const response = await fetch(`/api/live-data?range=${range}`);
+            return await response.json();
+        }
+
+        function plotLiveChart(data, chartId) {
+            const trace_btc = {
+                x: data.time,
+                y: data.btc,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f28e2b', width: 3 },
+                name: 'BTC/USDT'
+            };
+            const trace_eth = {
+                x: data.time,
+                y: data.eth,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#4e79a7', width: 3 },
+                name: 'ETH/USDT'
+            };
+            let yAll = data.btc.concat(data.eth);
+            let yMin = Math.min(...yAll);
+            let yMax = Math.max(...yAll);
+            let eps = 1e-6;
+            let yRange = [yMin - eps, yMax + eps];
+            let xRange = [data.time[0], data.time[data.time.length - 1]];
+            const layout = {
+                plot_bgcolor: "#232323",
+                paper_bgcolor: "#232323",
+                font: { color: "#cccccc", family: "Segoe UI, Arial, sans-serif" },
+                xaxis: { title: "time", showgrid: true, gridcolor: "#444", tickmode: "auto", nticks: 8, range: xRange },
+                yaxis: { title: "Relative Change (%)", showgrid: true, gridcolor: "#444", range: yRange, autorange: false },
+                legend: { orientation: "h", x: 0.5, xanchor: "center", y: 1.1 },
+                margin: { t: 40, l: 60, r: 30, b: 60 },
+                transition: { duration: 400, easing: "cubic-in-out" }
+            };
+            // Only plot if there is data
+            if (data.time.length > 0 && data.btc.length > 0 && data.eth.length > 0) {
+                Plotly.react(chartId, [trace_btc, trace_eth], layout, {responsive: true, displayModeBar: false});
+            } else {
+                // Clear the chart if no data
+                Plotly.purge(chartId);
+            }
+        }
+
+        async function updateChart(range, chartId) {
+            const data = await fetchData(range);
+            plotLiveChart(data, chartId);
+        }
+
+        function startPolling(range, chartId) {
+            if (intervals[range]) return;
+            updateChart(range, chartId);
+            intervals[range] = setInterval(() => updateChart(range, chartId), 1000);
+        }
+
+        function stopPolling(range) {
+            if (intervals[range]) {
+                clearInterval(intervals[range]);
+                intervals[range] = null;
+            }
+        }
+
+        // Tab switching logic
+        document.addEventListener("DOMContentLoaded", function() {
+            startPolling("60s", "live-chart-60s");
+            document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(btn => {
+                btn.addEventListener('shown.bs.tab', function (event) {
+                    // Stop all polling
+                    stopPolling("60s");
+                    stopPolling("30m");
+                    stopPolling("3h");
+                    // Start polling for the active tab
+                    if (event.target.id === "tab-60s") {
+                        startPolling("60s", "live-chart-60s");
+                    } else if (event.target.id === "tab-30m") {
+                        startPolling("30m", "live-chart-30m");
+                    } else if (event.target.id === "tab-3h") {
+                        startPolling("3h", "live-chart-3h");
+                    }
+                });
+            });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
